@@ -1,6 +1,7 @@
 # MangaLens
 
 > Chrome extension for translating manga and manhwa — select a panel, get instant translation.
+> Primarily designed for Traditional Chinese readers; translations are output in Traditional Chinese.
 
 **[繁體中文說明](README.zh-TW.md)**
 
