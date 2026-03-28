@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MangaLens — Manga Translation Chrome Extension</title>
+<style>
+  :root {
+    --primary: #4a90d9;
+    --primary-dark: #3570b0;
+    --bg: #0f1117;
+    --bg-card: #1a1d27;
+    --bg-card-hover: #222632;
+    --text: #e8eaf0;
+    --text-muted: #8b90a0;
+    --accent: #f59e0b;
+    --green: #10b981;
+    --red: #ef4444;
+    --border: #2a2e3a;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "Noto Sans TC", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* === Hero === */
+  .hero {
+    text-align: center;
+    padding: 80px 24px 60px;
+    background: linear-gradient(180deg, #151825 0%, var(--bg) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 800px;
+    background: radial-gradient(circle, rgba(74,144,217,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(74,144,217,0.15);
+    color: var(--primary);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    letter-spacing: 0.5px;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 800;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, #a0b8d8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero p {
+    font-size: 18px;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto 32px;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+  }
+  .hero-stat {
+    text-align: center;
+  }
+  .hero-stat-num {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--primary);
+  }
+  .hero-stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* === Container === */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  section {
+    padding: 80px 0;
+  }
+
+  .section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .section-desc {
+    color: var(--text-muted);
+    font-size: 16px;
+    max-width: 600px;
+    margin-bottom: 48px;
+  }
+
+  /* === Preview (Mockup) === */
+  .preview-section {
+    background: linear-gradient(180deg, var(--bg) 0%, #151825 50%, var(--bg) 100%);
+  }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .preview-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .preview-card-header {
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .preview-card-header .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+
+  .preview-body {
+    padding: 24px;
+    position: relative;
+    min-height: 320px;
+  }
+
+  /* Manga mockup */
+  .manga-panel {
+    background: #fff;
+    border-radius: 4px;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .manga-img {
+    width: 100%;
+    height: 260px;
+    background: linear-gradient(135deg, #f0e6d3, #e8dcc8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .manga-bubble {
+    position: absolute;
+    background: #fff;
+    border: 2px solid #333;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  .manga-bubble-1 {
+    top: 20px; left: 20px;
+    width: 140px; height: 80px;
+  }
+
+  .manga-bubble-2 {
+    bottom: 30px; right: 20px;
+    width: 160px; height: 70px;
+  }
+
+  /* Selection overlay mockup */
+  .mock-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.15);
+    pointer-events: none;
+  }
+
+  .mock-selection {
+    position: absolute;
+    border: 2px dashed var(--primary);
+    background: rgba(74,144,217,0.1);
+    top: 12px; left: 12px;
+    width: 155px; height: 90px;
+    animation: selectionPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes selectionPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  /* Translation result mockup */
+  .mock-result {
+    position: absolute;
+    top: 110px; left: 12px;
+    background: rgba(255,255,255,0.65);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(74,144,217,0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #1a1a2e;
+    max-width: 170px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    animation: resultFadeIn 0.5s ease-out;
+  }
+
+  .mock-result-actions {
+    display: flex;
+    gap: 4px;
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .mock-result-actions span {
+    background: rgba(30,30,30,0.85);
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  @keyframes resultFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Toolbar mockup */
+  .mock-toolbar {
+    position: absolute;
+    bottom: 16px; right: 16px;
+    background: rgba(26,29,39,0.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+  }
+
+  .mock-toolbar-btn {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    cursor: default;
+  }
+
+  .mock-toolbar-btn.active {
+    background: rgba(74,144,217,0.3);
+    color: var(--primary);
+  }
+
+  /* Popup mockup */
+  .mock-popup {
+    background: #fff;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+    color: #333;
+    font-size: 13px;
+    overflow: hidden;
+  }
+
+  .mock-popup-header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+    padding: 16px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .mock-popup-body {
+    padding: 16px;
+  }
+
+  .mock-field {
+    margin-bottom: 12px;
+  }
+
+  .mock-field label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 4px;
+  }
+
+  .mock-select, .mock-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #f8f9fa;
+    color: #333;
+  }
+
+  .mock-summary {
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+    padding: 8px 0;
+    border-top: 1px solid #eee;
+    margin-top: 8px;
+  }
+
+  .mock-popup-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: default;
+    margin-top: 12px;
+  }
+
+  /* === Features === */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    transition: all 0.2s;
+  }
+
+  .feature-card:hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(74,144,217,0.3);
+    transform: translateY(-2px);
+  }
+
+  .feature-icon {
+    font-size: 28px;
+    margin-bottom: 14px;
+    display: block;
+  }
+
+  .feature-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .feature-card p {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* === Engine Comparison === */
+  .engine-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .engine-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .engine-table th {
+    background: var(--bg-card);
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .engine-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .engine-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .engine-table tr:hover td {
+    background: rgba(74,144,217,0.04);
+  }
+
+  .engine-name {
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .stars {
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .tag-free { background: rgba(16,185,129,0.15); color: var(--green); }
+  .tag-rec { background: rgba(74,144,217,0.15); color: var(--primary); }
+  .tag-local { background: rgba(245,158,11,0.15); color: var(--accent); }
+
+  /* === How it works === */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    position: relative;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 32px;
+    left: 60px;
+    right: 60px;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+
+  .step {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-num {
+    width: 64px; height: 64px;
+    background: var(--bg-card);
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--primary);
+    margin: 0 auto 16px;
+  }
+
+  .step h3 {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .step p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* === Install === */
+  .install-section {
+    background: linear-gradient(180deg, var(--bg) 0%, #151825 100%);
+  }
+
+  .install-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .install-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+  }
+
+  .install-card h3 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .install-card ol {
+    padding-left: 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .install-card ol li {
+    margin-bottom: 8px;
+  }
+
+  .install-card code {
+    background: rgba(74,144,217,0.1);
+    color: var(--primary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: "SF Mono", Monaco, monospace;
+  }
+
+  /* === Footer === */
+  footer {
+    text-align: center;
+    padding: 40px 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* === Responsive === */
+  @media (max-width: 768px) {
+    .preview-grid { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: repeat(2, 1fr); }
+    .steps::before { display: none; }
+    .install-grid { grid-template-columns: 1fr; }
+    .hero-stats { gap: 24px; }
+    section { padding: 48px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <span class="hero-badge">Chrome Extension v2.0</span>
+    <h1>MangaLens</h1>
+    <p>Select manga panels to instantly OCR and translate Korean/Japanese text. Works on desktop Chrome and Android.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num">7</div>
+        <div class="hero-stat-label">翻譯引擎</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">2</div>
+        <div class="hero-stat-label">支援語言</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">2</div>
+        <div class="hero-stat-label">支援平台</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section>
+  <div class="container">
+    <div class="section-label">How it works</div>
+    <h2>使用流程</h2>
+    <p class="section-desc">四個步驟，快速翻譯漫畫對話。</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>啟動框選</h3>
+        <p>點擊工具列按鈕、按快捷鍵或從 Popup 啟動</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>拖曳選取</h3>
+        <p>在漫畫頁面上拖曳出想翻譯的區域</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>自動辨識</h3>
+        <p>OCR 辨識圖片中的韓文或日文文字</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>即時翻譯</h3>
+        <p>翻譯結果疊加顯示在原圖上方</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Preview -->
+<section class="preview-section">
+  <div class="container">
+    <div class="section-label">Preview</div>
+    <h2>介面預覽</h2>
+    <p class="section-desc">直覺的框選操作和半透明翻譯結果，閱讀漫畫不中斷。</p>
+    <div class="preview-grid">
+      <!-- 框選翻譯預覽 -->
+      <div class="preview-card">
+        <div class="preview-card-header">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+          &nbsp; 框選翻譯 — 漫畫頁面
+        </div>
+        <div class="preview-body">
+          <div class="manga-panel">
+            <div class="manga-img">
+              <!-- Manga bubbles -->
+              <div class="manga-bubble manga-bubble-1">
+                각성자가<br>던전을
+              </div>
+              <div class="manga-bubble manga-bubble-2">
+                클리어하기<br>전까지
+              </div>
+              <!-- Selection overlay -->
+              <div class="mock-overlay"></div>
+              <div class="mock-selection"></div>
+              <!-- Translation result -->
+              <div class="mock-result">
+                <div class="mock-result-actions">
+                  <span>✕ 關閉</span>
+                  <span>🔄 重翻</span>
+                  <span>📋 複製</span>
+                </div>
+                覺醒者在<br>副本通關之前
+              </div>
+            </div>
+          </div>
+          <!-- Floating toolbar -->
+          <div class="mock-toolbar">
+            <div class="mock-toolbar-btn active">⏹ 停止框選</div>
+            <div class="mock-toolbar-btn">🔄 連續</div>
+            <div class="mock-toolbar-btn">🗑 清除</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Popup 設定預覽 -->
+      <div class="preview-card">
+        <div class="preview-card-header">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+          &nbsp; 擴充套件設定 — Popup
+        </div>
+        <div class="preview-body" style="display:flex;align-items:center;justify-content:center;">
+          <div class="mock-popup">
+            <div class="mock-popup-header">MangaLens v2.0</div>
+            <div class="mock-popup-body">
+              <div class="mock-field">
+                <label>翻譯引擎</label>
+                <div class="mock-select">Gemini Vision（推薦）</div>
+              </div>
+              <div class="mock-field">
+                <label>來源語言</label>
+                <div class="mock-select">韓文</div>
+              </div>
+              <div class="mock-field">
+                <label>Gemini API Key</label>
+                <div class="mock-input" style="color:#999;">AIza••••••••••••</div>
+              </div>
+              <div class="mock-field">
+                <label>模型</label>
+                <div class="mock-select">Gemini 3 Flash（快速）</div>
+              </div>
+              <div class="mock-summary">Gemini · 韓文</div>
+              <div class="mock-popup-btn">📷 開始框選翻譯</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section>
+  <div class="container">
+    <div class="section-label">Features</div>
+    <h2>功能特色</h2>
+    <p class="section-desc">為漫畫翻譯場景量身打造的使用體驗。</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon">📷</span>
+        <h3>框選即翻譯</h3>
+        <p>拖曳選取漫畫區域，自動截圖、OCR 辨識、翻譯一氣呵成。</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔄</span>
+        <h3>連續框選模式</h3>
+        <p>翻譯完一格後繼續框選下一格，不需重複啟動，整頁翻譯更流暢。</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">👆</span>
+        <h3>結果框互動</h3>
+        <p>拖曳移位、長按透明對照原文、一鍵重翻或複製翻譯文字。</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📱</span>
+        <h3>手機也能用</h3>
+        <p>支援 Android 觸控操作，在 Kiwi Browser 等支援擴充套件的瀏覽器上使用。</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔧</span>
+        <h3>7 種翻譯引擎</h3>
+        <p>Gemini、Claude、Groq、Cloud Vision、OCR Space 等，依需求自由搭配。</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">⌨️</span>
+        <h3>自訂快捷鍵</h3>
+        <p>預設 Alt+S 啟動框選，可自行設定任何組合鍵。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Engine Comparison -->
+<section>
+  <div class="container">
+    <div class="section-label">Engines</div>
+    <h2>引擎比較</h2>
+    <p class="section-desc">根據漫畫類型和使用場景選擇最適合的引擎。</p>
+    <div class="engine-table-wrap">
+      <table class="engine-table">
+        <thead>
+          <tr>
+            <th>引擎</th>
+            <th>手寫字辨識</th>
+            <th>印刷體精準度</th>
+            <th>翻譯品質</th>
+            <th>速度</th>
+            <th>費用</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="engine-name">Gemini Vision</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td>免費額度</td>
+            <td><span class="tag tag-rec">推薦</span></td>
+          </tr>
+          <tr>
+            <td><span class="engine-name">Claude Proxy</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td>需本機 Proxy</td>
+            <td><span class="tag tag-local">本機</span></td>
+          </tr>
+          <tr>
+            <td><span class="engine-name">OpenAI 相容</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td>依服務而定</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><span class="engine-name">Groq Vision + LLM</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td>免費</td>
+            <td><span class="tag tag-free">免費</span></td>
+          </tr>
+          <tr>
+            <td><span class="engine-name">Cloud Vision + LLM</span></td>
+            <td><span class="stars">★☆☆</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td>免費額度</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><span class="engine-name">OCR Space + 翻譯</span></td>
+            <td><span class="stars">★☆☆</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td><span class="stars">★★☆</span></td>
+            <td>免費</td>
+            <td><span class="tag tag-free">免費</span></td>
+          </tr>
+          <tr>
+            <td><span class="engine-name">純 OCR</span></td>
+            <td colspan="3" style="color:var(--text-muted);">僅辨識文字，不翻譯</td>
+            <td><span class="stars">★★★</span></td>
+            <td>依引擎而定</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top: 24px; display: flex; gap: 24px; flex-wrap: wrap;">
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; flex: 1; min-width: 200px;">
+        <div style="font-weight: 700; margin-bottom: 6px;">一般使用</div>
+        <div style="color: var(--text-muted); font-size: 14px;">Gemini Vision — 設定最簡單，手寫字也能辨識</div>
+      </div>
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; flex: 1; min-width: 200px;">
+        <div style="font-weight: 700; margin-bottom: 6px;">印刷體為主</div>
+        <div style="color: var(--text-muted); font-size: 14px;">Cloud Vision + Gemini — OCR 精準度最高</div>
+      </div>
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; flex: 1; min-width: 200px;">
+        <div style="font-weight: 700; margin-bottom: 6px;">免費快速</div>
+        <div style="color: var(--text-muted); font-size: 14px;">Groq Vision + LLM — 完全免費，速度最快</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section class="install-section">
+  <div class="container">
+    <div class="section-label">Install</div>
+    <h2>安裝方式</h2>
+    <p class="section-desc">支援桌面版 Chrome 與 Android 手機瀏覽器。</p>
+    <div class="install-grid">
+      <div class="install-card">
+        <h3>🖥️ 桌面版 Chrome</h3>
+        <ol>
+          <li>開啟 <code>chrome://extensions/</code></li>
+          <li>右上角開啟「開發人員模式」</li>
+          <li>點擊「載入未封裝項目」</li>
+          <li>選擇擴充套件資料夾</li>
+          <li>完成！網頁右下角會出現浮動工具列</li>
+        </ol>
+      </div>
+      <div class="install-card">
+        <h3>📱 Android 手機</h3>
+        <ol>
+          <li>安裝支援擴充套件的瀏覽器（如 Kiwi Browser）</li>
+          <li>將擴充套件資料夾打包成 <code>.zip</code></li>
+          <li>在瀏覽器擴充功能頁面匯入 zip 檔</li>
+          <li>完成！用手指觸控操作框選</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- API Keys -->
+<section>
+  <div class="container">
+    <div class="section-label">API Keys</div>
+    <h2>API Key 取得方式</h2>
+    <p class="section-desc">大部分服務都有免費額度。</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+      <div class="install-card">
+        <h3 style="font-size:16px;">Gemini</h3>
+        <p style="color:var(--text-muted);font-size:14px;">Google AI Studio 免費申請<br>
+        <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary);">aistudio.google.com/apikey</a></p>
+      </div>
+      <div class="install-card">
+        <h3 style="font-size:16px;">Groq</h3>
+        <p style="color:var(--text-muted);font-size:14px;">Groq Console 免費申請<br>
+        <a href="https://console.groq.com/keys" target="_blank" style="color:var(--primary);">console.groq.com/keys</a></p>
+      </div>
+      <div class="install-card">
+        <h3 style="font-size:16px;">Cloud Vision</h3>
+        <p style="color:var(--text-muted);font-size:14px;">GCP Console 啟用 API<br>每月 1,000 次免費</p>
+      </div>
+      <div class="install-card">
+        <h3 style="font-size:16px;">OCR Space</h3>
+        <p style="color:var(--text-muted);font-size:14px;">免費申請或留白使用公用金鑰<br>
+        <a href="https://ocr.space/ocrapi/freekey" target="_blank" style="color:var(--primary);">ocr.space/ocrapi/freekey</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    MangaLens v2.0.0 — Chrome Extension<br>
+    <span style="color:#555;">Open Source on GitHub</span>
+  </div>
+</footer>
+
+</body>
+</html>

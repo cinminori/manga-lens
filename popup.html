@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MangaLens</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 330px;
+      font-family: -apple-system, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 17px;
+      margin-bottom: 14px;
+      color: #2c3e50;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section {
+      background: #fff;
+      border: 1px solid #e5e5e7;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #86868b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    label {
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 5px;
+      color: #444;
+    }
+    select, input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d2d2d7;
+      border-radius: 6px;
+      background: #fafafa;
+      color: #1d1d1f;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+    }
+    select:focus, input:focus {
+      border-color: #4a90d9;
+      box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.15);
+    }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 13px;
+      cursor: pointer;
+      color: #333;
+    }
+    .check-row input[type="checkbox"] {
+      width: auto;
+      accent-color: #4a90d9;
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: #4a90d9;
+      color: #fff;
+      margin-top: 6px;
+    }
+    .btn-primary:hover { background: #3a7bc8; }
+
+    .status-msg {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #27ae60;
+      text-align: center;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .status-msg.show { opacity: 1; }
+
+    .tooltip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #4a90d9;
+      color: #fff;
+      border-radius: 50%;
+      width: 15px;
+      height: 15px;
+      font-size: 10px;
+      line-height: 1;
+      margin-left: 2px;
+      cursor: help;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .tooltip-icon:hover { background: #3a7bc8; }
+
+    .footer {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #aaa;
+      text-align: center;
+      border-top: 1px solid #eee;
+      padding-top: 8px;
+    }
+
+    .field + .field { margin-top: 8px; }
+
+    .service-settings { display: none; }
+    .service-settings.active { display: block; }
+  </style>
+</head>
+<body>
+  <h1>📖 MangaLens</h1>
+
+  <div class="section">
+    <div class="section-title">翻譯設定</div>
+    <div class="row">
+      <div>
+        <label>💬 來源語言</label>
+        <select id="sourceLang">
+          <option value="ko">韓文</option>
+          <option value="ja">日文</option>
+        </select>
+      </div>
+      <div>
+        <label>📐 文字方向</label>
+        <select id="textDirection">
+          <option value="auto">自動偵測</option>
+          <option value="vertical">直排</option>
+          <option value="horizontal">橫排</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">翻譯服務</div>
+    <div class="field">
+      <label>🔄 翻譯引擎</label>
+      <select id="translationService">
+        <option value="gemini">Gemini Vision（推薦）</option>
+        <option value="claude">Local API Proxy（本機代理）</option>
+        <option value="openai">OpenAI 相容（Groq、OpenRouter…）</option>
+        <option value="groqvision">Groq Vision OCR + LLM 翻譯（快速）</option>
+        <option value="cloudvisionllm">Cloud Vision OCR + LLM 翻譯</option>
+        <option value="ocronly">純 OCR（只辨識文字，不翻譯）</option>
+        <option value="ocrspace">OCR Space + 翻譯（文字模型可用）</option>
+      </select>
+    </div>
+
+    <!-- Gemini 設定 -->
+    <div id="geminiSettings" class="service-settings active">
+      <div class="field">
+        <label>
+          🔑 Gemini API Key
+          <a href="https://aistudio.google.com/apikey" target="_blank" class="tooltip-icon" title="點擊前往 Google AI Studio 免費申請 API Key">?</a>
+        </label>
+        <input type="password" id="geminiApiKey" placeholder="AIza..." />
+      </div>
+      <div class="field">
+        <label>🤖 模型</label>
+        <select id="geminiModel">
+          <option value="gemini-3-flash-preview">Gemini 3 Flash（快速）</option>
+          <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro（最強）</option>
+          <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Local API Proxy 設定 -->
+    <div id="claudeSettings" class="service-settings">
+      <div class="field">
+        <label>🌐 Proxy URL</label>
+        <input type="text" id="claudeProxyUrl" placeholder="http://localhost:8080（不需加 /v1）" />
+      </div>
+      <div class="field">
+        <label>🤖 模型名稱</label>
+        <input type="text" id="claudeModel" placeholder="模型名稱（依你的 Proxy 支援的模型填寫）" />
+      </div>
+    </div>
+
+    <!-- OpenAI 相容設定 -->
+    <div id="openaiSettings" class="service-settings">
+      <div class="field">
+        <label>🌐 API Base URL</label>
+        <input type="text" id="openaiBaseUrl" placeholder="https://api.groq.com/openai（不需加 /v1）" />
+      </div>
+      <div class="field">
+        <label>🔑 API Key</label>
+        <input type="password" id="openaiApiKey" placeholder="sk-..." />
+      </div>
+      <div class="field">
+        <label>🤖 模型名稱</label>
+        <input type="text" id="openaiModel" placeholder="meta-llama/llama-4-scout-17b-16e-instruct" />
+      </div>
+    </div>
+
+    <!-- 純 OCR 設定 -->
+    <div id="ocronlySettings" class="service-settings">
+      <div class="field">
+        <label>🔄 OCR 引擎</label>
+        <select id="ocrOnlyEngine">
+          <option value="gemini">Gemini Vision</option>
+          <option value="groq">Groq Vision（Llama 4 Scout）</option>
+          <option value="cloudvision">Google Cloud Vision API</option>
+          <option value="ocrspace">OCR Space</option>
+        </select>
+      </div>
+      <div id="ocrOnlyGeminiFields">
+        <div class="field">
+          <label>🔑 Gemini API Key</label>
+          <input type="password" id="ocrOnlyGeminiApiKey" placeholder="AIza...（留白則使用 Gemini 設定的 Key）" />
+        </div>
+        <div class="field">
+          <label>🤖 Gemini 模型</label>
+          <select id="ocrOnlyGeminiModel">
+            <option value="gemini-3-flash-preview">Gemini 3 Flash（快速）</option>
+            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro（最強）</option>
+            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+          </select>
+        </div>
+      </div>
+      <div id="ocrOnlyGroqFields" style="display:none;">
+        <div class="field">
+          <label>🔑 Groq API Key</label>
+          <input type="password" id="ocrOnlyGroqApiKey" placeholder="gsk...（留白則使用 Groq Vision 設定的 Key）" />
+        </div>
+      </div>
+      <div id="ocrOnlyCloudvisionFields" style="display:none;">
+        <div class="field">
+          <label>🔑 GCP API Key</label>
+          <input type="password" id="ocrOnlyCloudvisionApiKey" placeholder="AIza...（需啟用 Cloud Vision API）" />
+        </div>
+      </div>
+      <div id="ocrOnlyOcrspaceFields" style="display:none;">
+        <div class="field">
+          <label>🔑 OCR Space API Key</label>
+          <input type="text" id="ocrOnlyOcrspaceApiKey" placeholder="留白使用免費公用金鑰" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Groq Vision OCR + LLM 翻譯設定 -->
+    <div id="groqvisionSettings" class="service-settings">
+      <div class="field">
+        <label>
+          🔑 Groq API Key（視覺 OCR）
+          <a href="https://console.groq.com/keys" target="_blank" class="tooltip-icon" title="前往 Groq Console 申請 API Key">?</a>
+        </label>
+        <input type="password" id="groqVisionApiKey" placeholder="gsk_..." />
+      </div>
+      <div class="field">
+        <label>👁️ Groq 視覺模型</label>
+        <select id="groqVisionModel">
+          <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>🔄 翻譯後端</label>
+        <select id="groqTranslateBackend">
+          <option value="openai">OpenAI 相容（Groq、OpenRouter…）</option>
+          <option value="gemini">Gemini</option>
+        </select>
+      </div>
+      <!-- OpenAI 相容翻譯設定 -->
+      <div id="groqTranslateOpenaiFields">
+        <div class="field">
+          <label>🌐 翻譯 LLM Base URL</label>
+          <input type="text" id="groqTranslateBaseUrl" placeholder="https://api.groq.com/openai（不需加 /v1）" />
+        </div>
+        <div class="field">
+          <label>🔑 翻譯 LLM API Key</label>
+          <input type="password" id="groqTranslateApiKey" placeholder="留白則與 Groq Key 相同" />
+        </div>
+        <div class="field">
+          <label>🤖 翻譯模型名稱</label>
+          <input type="text" id="groqTranslateModel" placeholder="qwen/qwen3-32b" />
+        </div>
+      </div>
+      <!-- Gemini 翻譯設定 -->
+      <div id="groqTranslateGeminiFields" style="display:none;">
+        <div class="field">
+          <label>🔑 Gemini API Key</label>
+          <input type="password" id="groqTranslateGeminiApiKey" placeholder="AIza...（留白則使用上方 Gemini 設定的 Key）" />
+        </div>
+        <div class="field">
+          <label>🤖 Gemini 翻譯模型</label>
+          <select id="groqTranslateGeminiModel">
+            <option value="gemini-3-flash-preview">Gemini 3 Flash（快速）</option>
+            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro（最強）</option>
+            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cloud Vision OCR + LLM 翻譯設定 -->
+    <div id="cloudvisionllmSettings" class="service-settings">
+      <div class="field">
+        <label>
+          🔑 GCP API Key（Cloud Vision OCR）
+          <a href="https://console.cloud.google.com/apis/library/vision.googleapis.com" target="_blank" class="tooltip-icon" title="需在 GCP Console 啟用 Cloud Vision API">?</a>
+        </label>
+        <input type="password" id="cvllmApiKey" placeholder="AIza...（需啟用 Cloud Vision API）" />
+      </div>
+      <div class="field">
+        <label>🔄 翻譯後端</label>
+        <select id="cvllmTranslateBackend">
+          <option value="gemini">Gemini</option>
+          <option value="openai">OpenAI 相容（Groq、OpenRouter…）</option>
+        </select>
+      </div>
+      <!-- Gemini 翻譯 -->
+      <div id="cvllmGeminiFields">
+        <div class="field">
+          <label>🔑 Gemini API Key</label>
+          <input type="password" id="cvllmGeminiApiKey" placeholder="AIza...（留白則使用全域 Gemini 設定的 Key）" />
+        </div>
+        <div class="field">
+          <label>🤖 Gemini 翻譯模型</label>
+          <select id="cvllmGeminiModel">
+            <option value="gemini-3-flash-preview">Gemini 3 Flash（快速）</option>
+            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro（最強）</option>
+            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+          </select>
+        </div>
+      </div>
+      <!-- OpenAI 相容翻譯 -->
+      <div id="cvllmOpenaiFields" style="display:none;">
+        <div class="field">
+          <label>🌐 翻譯 LLM Base URL</label>
+          <input type="text" id="cvllmBaseUrl" placeholder="https://api.groq.com/openai（不需加 /v1）" />
+        </div>
+        <div class="field">
+          <label>🔑 翻譯 LLM API Key</label>
+          <input type="password" id="cvllmLlmApiKey" placeholder="sk-..." />
+        </div>
+        <div class="field">
+          <label>🤖 翻譯模型名稱</label>
+          <input type="text" id="cvllmLlmModel" placeholder="qwen/qwen3-32b" />
+        </div>
+      </div>
+    </div>
+
+    <!-- OCR Space 設定 -->
+    <div id="ocrspaceSettings" class="service-settings">
+      <div class="field">
+        <label>
+          🔑 OCR Space API Key
+          <a href="https://ocr.space/ocrapi/freekey" target="_blank" class="tooltip-icon" title="留白使用免費公用金鑰，速度較慢。點擊此處免費申請專屬金鑰">?</a>
+        </label>
+        <input type="text" id="ocrSpaceApiKey" placeholder="留白使用免費公用金鑰" />
+      </div>
+      <div class="field">
+        <label>🔄 翻譯後端</label>
+        <select id="ocrTranslateBackend">
+          <option value="google">Google 翻譯（免費）</option>
+          <option value="openai">OpenAI 相容 LLM</option>
+          <option value="gemini">Gemini</option>
+        </select>
+      </div>
+      <!-- OpenAI 相容翻譯 -->
+      <div id="ocrTranslateOpenaiFields">
+        <div class="field">
+          <label>🌐 翻譯 API Base URL</label>
+          <input type="text" id="ocrTranslateBaseUrl" placeholder="https://api.groq.com/openai（不需加 /v1）" />
+        </div>
+        <div class="field">
+          <label>🔑 翻譯 API Key</label>
+          <input type="password" id="ocrTranslateApiKey" placeholder="sk-..." />
+        </div>
+        <div class="field">
+          <label>🤖 翻譯模型名稱</label>
+          <input type="text" id="ocrTranslateModel" placeholder="meta-llama/llama-4-scout-17b-16e-instruct" />
+        </div>
+      </div>
+      <!-- Gemini 翻譯 -->
+      <div id="ocrTranslateGeminiFields" style="display:none;">
+        <div class="field">
+          <label>🔑 Gemini API Key</label>
+          <input type="password" id="ocrTranslateGeminiApiKey" placeholder="AIza...（留白則使用 Gemini 設定的 Key）" />
+        </div>
+        <div class="field">
+          <label>🤖 Gemini 翻譯模型</label>
+          <select id="ocrTranslateGeminiModel">
+            <option value="gemini-3-flash-preview">Gemini 3 Flash（快速）</option>
+            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro（最強）</option>
+            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">偏好設定</div>
+    <div class="field">
+      <label>⌨️ 頁內快捷鍵（點擊後按下組合鍵）</label>
+      <input type="text" id="customShortcut" value="Alt+S" readonly style="cursor:pointer;text-align:center;" />
+    </div>
+    <div style="font-size:11px;color:#aaa;margin-top:2px;margin-bottom:6px;">僅在網頁內有效，Chrome 全域快捷鍵請至 chrome://extensions/shortcuts</div>
+    <label class="check-row">
+      <input type="checkbox" id="showToolbar" checked>
+      👀 顯示網頁浮動工具列
+    </label>
+    <label class="check-row">
+      <input type="checkbox" id="continuousModeCheckbox">
+      🔄 連續框選模式
+    </label>
+  </div>
+
+  <div id="settingsSummary" style="font-size:12px;color:#666;text-align:center;margin-bottom:6px;"></div>
+  <button class="btn btn-primary" id="startBtn">📷 開始框選翻譯</button>
+  <div class="status-msg" id="statusMsg">✅ 設定已儲存</div>
+
+  <div class="footer">MangaLens v2.0 · 7 translation engines</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
