@@ -351,6 +351,47 @@
       margin-bottom: 6px;
       font-weight: 600;
     }
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0 10px;
+    }
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: var(--fg);
+      color: var(--bg);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      text-underline-offset: 0;
+      text-decoration-color: transparent;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .action-btn:hover {
+      transform: translateY(-1px);
+      opacity: 0.92;
+      text-decoration: none;
+    }
+    .action-btn.secondary {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    .mini-steps {
+      margin: 10px 0 0;
+      padding-inline-start: 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .mini-steps li {
+      margin: 6px 0;
+    }
 
     .table-wrap {
       margin: 28px 0;
@@ -615,6 +656,20 @@
     <h2>把擴充套件裝進瀏覽器</h2>
 
     <p>MangaLens 還沒上 Chrome Web Store，請以「載入未封裝項目」的方式安裝。流程一次設定，之後不需要重做。</p>
+
+    <div class="note">
+      <strong>從 GitHub 下載 ZIP</strong>
+      如果你不想用 <code>git clone</code>，最簡單的方式就是直接從 GitHub 下載壓縮檔。
+      <div class="action-row">
+        <a class="action-btn" href="https://github.com/cinminori/manga-lens/archive/refs/heads/main.zip" target="_blank" rel="noopener">直接下載 ZIP</a>
+        <a class="action-btn secondary" href="https://github.com/cinminori/manga-lens" target="_blank" rel="noopener">打開 GitHub Repo</a>
+      </div>
+      <ol class="mini-steps">
+        <li>進入 GitHub 倉庫頁面後，點右上角的 <code>Code</code>。</li>
+        <li>在展開選單中點 <code>Download ZIP</code>。</li>
+        <li>下載完成後解壓縮，安裝時選取解壓後的 <code>manga-lens-main</code> 資料夾。</li>
+      </ol>
+    </div>
 
     <h3>桌面版 Chrome / Edge / Brave</h3>
     <ol>
