@@ -1,0 +1,984 @@
+
+<!doctype html>
+<html lang="zh-TW">
+<head><script>(function(){
+  function makeStore(){
+    var data = {};
+    var api = {
+      getItem: function(k){ return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+      setItem: function(k, v){ data[k] = String(v); },
+      removeItem: function(k){ delete data[k]; },
+      clear: function(){ data = {}; },
+      key: function(i){ return Object.keys(data)[i] || null; }
+    };
+    Object.defineProperty(api, 'length', { get: function(){ return Object.keys(data).length; } });
+    return api;
+  }
+  function tryShim(name){
+    var works = false;
+    try { works = !!window[name] && typeof window[name].getItem === 'function'; void window[name].length; }
+    catch (_) { works = false; }
+    if (works) return;
+    try { Object.defineProperty(window, name, { configurable: true, value: makeStore() }); }
+    catch (_) { try { window[name] = makeStore(); } catch (__) {} }
+  }
+  tryShim('localStorage');
+  tryShim('sessionStorage');
+})();</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MangaLens 操作手冊 — 框選即翻譯</title>
+  <style>
+    :root {
+      --bg:      oklch(97% 0.018 70);
+      --surface: oklch(99% 0.008 70);
+      --fg:      oklch(22% 0.02 50);
+      --muted:   oklch(50% 0.018 50);
+      --border:  oklch(90% 0.014 70);
+      --accent:  oklch(64% 0.13 28);
+      --accent-soft: oklch(64% 0.13 28 / 0.10);
+
+      --font-display: 'Tiempos Headline', 'Newsreader', 'Iowan Old Style',
+                      'Noto Serif TC', 'Source Han Serif TC',
+                      'PingFang TC', Georgia, serif;
+      --font-body:    'Söhne', -apple-system, BlinkMacSystemFont,
+                      'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei',
+                      system-ui, sans-serif;
+      --font-mono:    ui-monospace, 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: 17px;
+      line-height: 1.7;
+      letter-spacing: 0.005em;
+      text-wrap: pretty;
+    }
+
+    .masthead {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 32px 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .wordmark {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .wordmark .dot { color: var(--accent); }
+    .masthead nav {
+      margin-inline-start: auto;
+      display: flex;
+      gap: 22px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .masthead nav a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .masthead nav a:hover { color: var(--fg); }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 64px 32px 96px;
+    }
+
+    .eyebrow {
+      font-family: var(--font-body);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(40px, 5.5vw, 60px);
+      line-height: 1.08;
+      letter-spacing: -0.018em;
+      font-weight: 600;
+      margin: 0 0 22px;
+    }
+    .deck {
+      font-family: var(--font-display);
+      font-size: clamp(20px, 2.2vw, 24px);
+      line-height: 1.45;
+      color: var(--muted);
+      font-style: italic;
+      margin: 0 0 36px;
+      max-width: 620px;
+    }
+    .byline {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-block: 16px;
+      border-block: 1px solid var(--border);
+      margin-bottom: 56px;
+      flex-wrap: wrap;
+    }
+    .byline .ver {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      background: var(--accent-soft);
+      border-radius: 4px;
+    }
+    .byline .sep::before { content: "·"; margin: 0 4px; color: var(--border); }
+
+    .hero {
+      aspect-ratio: 16 / 9;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 14px;
+      overflow: hidden;
+      position: relative;
+      background:
+        radial-gradient(60% 80% at 70% 20%, oklch(64% 0.13 28 / 0.18), transparent 60%),
+        radial-gradient(50% 70% at 20% 80%, oklch(64% 0.13 28 / 0.10), transparent 60%),
+        linear-gradient(135deg, oklch(99% 0.008 70), oklch(94% 0.02 70));
+    }
+    .hero .panel {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 12px 36px -16px oklch(40% 0.04 50 / 0.18);
+    }
+    .hero .panel.a { inset: 14% 52% 30% 10%; }
+    .hero .panel.b { inset: 18% 14% 50% 56%; }
+    .hero .panel.c { inset: 56% 18% 12% 22%; }
+    .hero .selection {
+      position: absolute;
+      inset: 32% 38% 28% 28%;
+      border: 1.5px dashed var(--accent);
+      background: oklch(64% 0.13 28 / 0.06);
+      border-radius: 4px;
+    }
+    .hero .selection::after {
+      content: "";
+      position: absolute;
+      right: -5px; bottom: -5px;
+      width: 10px; height: 10px;
+      background: var(--accent);
+      border: 2px solid var(--surface);
+      border-radius: 50%;
+    }
+    .hero .bubble {
+      position: absolute;
+      left: 50%;
+      bottom: 14%;
+      transform: translateX(-50%);
+      background: var(--fg);
+      color: var(--bg);
+      font-size: 12px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-family: var(--font-body);
+      letter-spacing: 0.02em;
+    }
+    .caption {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 56px;
+      font-style: italic;
+    }
+
+    .lede {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 2.5vw, 26px);
+      line-height: 1.5;
+      color: var(--fg);
+      margin: 0 0 48px;
+      letter-spacing: -0.005em;
+    }
+
+    .quickstart {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 32px;
+      margin-bottom: 64px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 28px;
+    }
+    .quickstart .label {
+      grid-column: 1 / -1;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .quickstart .num {
+      font-family: var(--font-display);
+      font-size: 22px;
+      color: var(--accent);
+      line-height: 1.2;
+      font-feature-settings: "tnum";
+      padding-top: 2px;
+    }
+    .quickstart .step {
+      padding-bottom: 14px;
+      border-bottom: 1px dashed var(--border);
+      margin-bottom: 14px;
+    }
+    .quickstart .step:last-of-type {
+      border-bottom: 0;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+    .quickstart .step strong {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .quickstart .step span {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .section-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-top: 72px;
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+    h2 {
+      font-family: var(--font-display);
+      font-size: clamp(30px, 3.4vw, 36px);
+      letter-spacing: -0.012em;
+      line-height: 1.18;
+      font-weight: 600;
+      margin: 0 0 24px;
+    }
+    h3 {
+      font-family: var(--font-body);
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.005em;
+      margin: 36px 0 14px;
+    }
+    p { margin: 18px 0; }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 5px;
+      color: var(--fg);
+    }
+    a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+      text-decoration-color: oklch(64% 0.13 28 / 0.4);
+      transition: text-decoration-color 0.15s;
+    }
+    a:hover { text-decoration-color: var(--accent); }
+    kbd {
+      font-family: var(--font-mono);
+      font-size: 0.82em;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      color: var(--fg);
+      box-shadow: 0 1px 0 oklch(90% 0.014 70 / 0.5);
+    }
+
+    ul, ol { padding-inline-start: 24px; }
+    li { margin: 8px 0; }
+    li::marker { color: var(--muted); }
+
+    blockquote.pull {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 2.6vw, 28px);
+      line-height: 1.4;
+      letter-spacing: -0.005em;
+      margin: 48px 0;
+      padding: 12px 0 12px 28px;
+      border-inline-start: 3px solid var(--accent);
+      color: var(--fg);
+      font-style: italic;
+    }
+
+    .note {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-inline-start: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      padding: 16px 20px;
+      margin: 28px 0;
+      font-size: 15px;
+      color: var(--fg);
+    }
+    .note strong {
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .table-wrap {
+      margin: 28px 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      font-family: var(--font-body);
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: start;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: oklch(95% 0.014 70);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    tr:last-child td { border-bottom: 0; }
+    td.eng-name { font-weight: 600; }
+    .stars {
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+    }
+    .stars .dim { color: var(--border); }
+
+    .faq details {
+      border-bottom: 1px solid var(--border);
+      padding: 22px 0;
+    }
+    .faq details:first-of-type { border-top: 1px solid var(--border); }
+    .faq summary {
+      list-style: none;
+      cursor: pointer;
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: -0.005em;
+      line-height: 1.35;
+      color: var(--fg);
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::before {
+      content: "Q.";
+      font-family: var(--font-display);
+      color: var(--accent);
+      font-size: 18px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .faq summary::after {
+      content: "+";
+      margin-inline-start: auto;
+      color: var(--muted);
+      font-family: var(--font-body);
+      font-size: 22px;
+      font-weight: 300;
+      transition: transform 0.2s;
+    }
+    .faq details[open] summary::after { content: "−"; }
+    .faq .answer {
+      padding-top: 14px;
+      padding-inline-start: 32px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    .faq .answer p:first-child { margin-top: 0; }
+    .faq .answer p:last-child { margin-bottom: 0; }
+
+    .engines {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 28px 0 36px;
+    }
+    .engine-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .engine-card .e-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .engine-card h4 {
+      font-family: var(--font-display);
+      font-size: 19px;
+      letter-spacing: -0.005em;
+      margin: 0;
+      font-weight: 600;
+    }
+    .engine-card p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .engine-card .use {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: auto;
+      padding-top: 8px;
+    }
+    .engine-card .use strong {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 3px;
+      font-weight: 600;
+    }
+    .engine-card.recommend {
+      border-color: var(--accent);
+      background:
+        linear-gradient(180deg, oklch(64% 0.13 28 / 0.06), transparent),
+        var(--surface);
+    }
+
+    .repo-link {
+      margin: 72px 0 24px;
+      padding-top: 28px;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+    }
+    .repo-link a {
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    footer.bottom {
+      max-width: 1100px;
+      margin: 64px auto 0;
+      padding: 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    footer.bottom .left {
+      font-family: var(--font-display);
+      font-size: 14px;
+      color: var(--fg);
+    }
+    footer.bottom a { color: inherit; }
+
+    @media (max-width: 720px) {
+      .masthead { flex-wrap: wrap; gap: 12px; padding: 22px 22px 18px; }
+      .masthead nav { width: 100%; gap: 16px; }
+      .wrap { padding: 40px 22px 64px; }
+      .quickstart { padding: 22px; grid-template-columns: 1fr; gap: 4px; }
+      .quickstart .num { display: inline; }
+      th, td { padding: 10px 12px; }
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 480px; }
+      footer.bottom { flex-direction: column; gap: 8px; padding: 24px 22px; }
+      h1 { font-size: 38px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="masthead">
+    <div class="wordmark">MangaLens<span class="dot">.</span></div>
+    <nav>
+      <a href="#install">安裝</a>
+      <a href="#setup">設定</a>
+      <a href="#use">使用</a>
+      <a href="#faq">常見問題</a>
+      <a href="#troubleshoot">錯誤排除</a>
+    </nav>
+  </header>
+
+  <article class="wrap" data-od-id="article">
+
+    <div class="eyebrow">操作手冊 · 給第一次使用的你</div>
+
+    <h1 data-od-id="headline">框一格，<br />讀懂整篇漫畫。</h1>
+
+    <p class="deck">
+      MangaLens 是一個讓你在任意漫畫頁面框選區域、即時翻譯韓文與日文的 Chrome 擴充套件。本文帶你從安裝到熟練操作，三十分鐘內成為老手。
+    </p>
+
+    <div class="byline">
+      <span class="ver">v2.0</span>
+      <span>2026 年 5 月更新</span>
+      <span class="sep"></span>
+      <span>閱讀時間 約 8 分鐘</span>
+    </div>
+
+    <div class="hero" data-od-id="hero" aria-hidden="true">
+      <div class="panel a"></div>
+      <div class="panel b"></div>
+      <div class="panel c"></div>
+      <div class="selection"></div>
+      <div class="bubble">框選即翻譯 · Alt+S</div>
+    </div>
+    <p class="caption">圖｜在韓漫頁面上拖曳一個矩形——OCR 與翻譯會自動接上。</p>
+
+    <p class="lede" data-od-id="lede">
+      閱讀外文漫畫時，最累的不是看不懂，而是要在分頁、Google 翻譯、回到漫畫之間來回切換。MangaLens 把這條動線壓縮到一個動作：在頁面上拉一個框。
+    </p>
+
+    <div class="quickstart">
+      <div class="label">三十秒快速上手</div>
+      <div class="num">01</div>
+      <div class="step">
+        <strong>安裝擴充套件</strong>
+        <span>到 <code>chrome://extensions/</code> 開啟開發者模式，載入未封裝項目，選擇 <code>manga-lens</code> 資料夾。</span>
+      </div>
+      <div class="num">02</div>
+      <div class="step">
+        <strong>填入 API Key</strong>
+        <span>點擊瀏覽器右上的 MangaLens 圖示，貼上 Gemini API Key（推薦的免費引擎）。</span>
+      </div>
+      <div class="num">03</div>
+      <div class="step">
+        <strong>按下 <kbd>Alt</kbd> + <kbd>S</kbd></strong>
+        <span>到任意漫畫頁面，按下快捷鍵，拖曳出一個矩形——翻譯結果會浮在原文上方。</span>
+      </div>
+    </div>
+
+    <div class="section-num" id="install">第一章 · 安裝</div>
+    <h2>把擴充套件裝進瀏覽器</h2>
+
+    <p>MangaLens 還沒上 Chrome Web Store，請以「載入未封裝項目」的方式安裝。流程一次設定，之後不需要重做。</p>
+
+    <h3>桌面版 Chrome / Edge / Brave</h3>
+    <ol>
+      <li>下載或 <code>git clone</code> <code>manga-lens</code> 倉庫到本地，解壓縮。</li>
+      <li>在網址列輸入 <code>chrome://extensions/</code> 並 Enter。</li>
+      <li>右上角開啟「<strong>開發人員模式</strong>」開關。</li>
+      <li>左側點擊「<strong>載入未封裝項目</strong>」按鈕。</li>
+      <li>在檔案選擇器中，選取剛剛解壓的 <code>manga-lens</code> 資料夾。</li>
+      <li>完成後，工具列會多一個書本圖示，每個網頁的右下角也會出現浮動工具列。</li>
+    </ol>
+
+    <h3>Android 手機（Kiwi Browser 等）</h3>
+    <ol>
+      <li>把 <code>manga-lens</code> 資料夾打包成 <code>.zip</code>。</li>
+      <li>在支援擴充功能的瀏覽器（如 Kiwi Browser）的擴充功能頁面，匯入這個 zip 檔。</li>
+      <li>授予權限後，回到漫畫頁面，用手指長按拖曳即可框選。</li>
+    </ol>
+
+    <div class="note">
+      <strong>注意</strong>
+      日後更新擴充套件，請務必<strong>重新整理目前正在閱讀的網頁（F5 或下拉刷新）</strong>讓新的程式碼生效——這一步很容易忘記。
+    </div>
+
+    <div class="section-num" id="setup">第二章 · 設定</div>
+    <h2>選一個翻譯引擎，貼上 API Key</h2>
+
+    <p>MangaLens 自己不翻譯，它呼叫你的雲端模型來做 OCR 與翻譯。這意味著你需要在任一支援的服務申請一把 API Key——大多數都有免費額度，足夠長時間使用。</p>
+
+    <p>如果你完全沒概念該選哪個，<strong>從 Gemini Vision 開始</strong>。它一個請求就同時做 OCR 和翻譯、手寫字也能辨識、並且 Google AI Studio 提供免費額度。</p>
+
+    <h3>七種引擎，分頭擔當不同情境</h3>
+
+    <div class="engines">
+      <div class="engine-card recommend">
+        <span class="e-num">01 · 推薦</span>
+        <h4>Gemini Vision</h4>
+        <p>單一模型完成 OCR + 翻譯。手寫字辨識能力最好，是大多數人的最佳起點。</p>
+        <div class="use"><strong>適合</strong>一般使用、手寫對話泡泡</div>
+      </div>
+      <div class="engine-card">
+        <span class="e-num">02</span>
+        <h4>Local API Proxy</h4>
+        <p>連到自架的 OpenAI 相容代理。可接自己微調的模型或本機部署。</p>
+        <div class="use"><strong>適合</strong>有自架經驗的進階使用者</div>
+      </div>
+      <div class="engine-card">
+        <span class="e-num">03</span>
+        <h4>OpenAI 相容</h4>
+        <p>支援任何走 OpenAI 格式的 API，包括 Groq、OpenRouter、DeepInfra 等。</p>
+        <div class="use"><strong>適合</strong>想自由切換模型廠商</div>
+      </div>
+      <div class="engine-card">
+        <span class="e-num">04</span>
+        <h4>Groq Vision + LLM</h4>
+        <p>Llama 4 Scout 做 OCR、再讓另一個 LLM 翻譯。免費、極快。</p>
+        <div class="use"><strong>適合</strong>追求速度與零成本</div>
+      </div>
+      <div class="engine-card">
+        <span class="e-num">05</span>
+        <h4>Cloud Vision + LLM</h4>
+        <p>Google Cloud Vision 做 OCR、再交給 Gemini 或 LLM 翻譯。印刷體精準度最強。</p>
+        <div class="use"><strong>適合</strong>印刷體為主的雜誌、教科書</div>
+      </div>
+      <div class="engine-card">
+        <span class="e-num">06</span>
+        <h4>純 OCR 模式</h4>
+        <p>只辨識文字、不翻譯，把原文丟回給你。用來校對或自己學語言。</p>
+        <div class="use"><strong>適合</strong>學日文、學韓文的讀者</div>
+      </div>
+      <div class="engine-card">
+        <span class="e-num">07</span>
+        <h4>OCR Space + 翻譯</h4>
+        <p>OCR Space 做辨識、再用 Google 翻譯或 Gemini 翻譯。完全免費的入門組合。</p>
+        <div class="use"><strong>適合</strong>不想申請 Google API Key 的人</div>
+      </div>
+    </div>
+
+    <h3>引擎能力比一比</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>引擎</th>
+            <th>手寫字</th>
+            <th>印刷體</th>
+            <th>翻譯品質</th>
+            <th>速度</th>
+            <th>費用</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="eng-name">Gemini Vision</td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td>免費額度</td>
+          </tr>
+          <tr>
+            <td class="eng-name">Local API Proxy</td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td>自架</td>
+          </tr>
+          <tr>
+            <td class="eng-name">OpenAI 相容</td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td><span class="stars">★★★</span></td>
+            <td>依服務而定</td>
+          </tr>
+          <tr>
+            <td class="eng-name">Groq Vision + LLM</td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td><span class="stars">★★★</span></td>
+            <td>免費</td>
+          </tr>
+          <tr>
+            <td class="eng-name">Cloud Vision + LLM</td>
+            <td><span class="stars">★<span class="dim">☆☆</span></span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★★</span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td>免費額度</td>
+          </tr>
+          <tr>
+            <td class="eng-name">OCR Space + 翻譯</td>
+            <td><span class="stars">★<span class="dim">☆☆</span></span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td><span class="stars">★★<span class="dim">☆</span></span></td>
+            <td>免費</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <strong>關於手寫字</strong>
+      傳統 OCR 引擎（Cloud Vision、OCR Space）<strong>無法辨識漫畫常見的手寫字和藝術字體</strong>。遇到這類文字請改用 Gemini 或 Groq Vision。另外，OCR Space 也<strong>不支援直排文字</strong>（日漫常見），請改用 Gemini Vision、Groq Vision 或 Cloud Vision。
+    </div>
+
+    <h3>API Key 去哪裡拿</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>服務</th>
+            <th>申請位置</th>
+            <th>費用</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="eng-name">Gemini</td>
+            <td><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a></td>
+            <td>免費額度</td>
+          </tr>
+          <tr>
+            <td class="eng-name">Groq</td>
+            <td><a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq Console</a></td>
+            <td>免費額度</td>
+          </tr>
+          <tr>
+            <td class="eng-name">Cloud Vision</td>
+            <td><a href="https://console.cloud.google.com/apis/library/vision.googleapis.com" target="_blank" rel="noopener">GCP Console</a></td>
+            <td>每月 1,000 次免費</td>
+          </tr>
+          <tr>
+            <td class="eng-name">OCR Space</td>
+            <td><a href="https://ocr.space/ocrapi/freekey" target="_blank" rel="noopener">ocr.space</a></td>
+            <td>免費（或留白用公用 Key）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>把 Key 貼進 Popup</h3>
+
+    <ol>
+      <li>點擊瀏覽器右上的 <strong>MangaLens 圖示</strong>，叫出 Popup 設定面板。</li>
+      <li>選擇<strong>來源語言</strong>：韓文或日文。</li>
+      <li>選擇<strong>文字方向</strong>：通常用「自動偵測」即可；日漫直排可手動指定。</li>
+      <li>從<strong>翻譯引擎</strong>下拉選單挑一個（建議從 Gemini Vision 開始）。</li>
+      <li>把對應的 API Key 貼進去——所有變更會<strong>自動儲存</strong>，不用再按按鈕。</li>
+    </ol>
+
+    <blockquote class="pull">
+      設定一次，一勞永逸。MangaLens 把所有 Key 存在瀏覽器本地，不會送到我們的伺服器——因為根本沒有伺服器。
+    </blockquote>
+
+    <div class="section-num" id="use">第三章 · 使用</div>
+    <h2>從框選到結果框的每一個動作</h2>
+
+    <p>設定完 Key 之後，所有的事都發生在漫畫頁面上。MangaLens 不會把你帶離閱讀現場，所有控制項都浮在頁面之上，看完即關。</p>
+
+    <h3>啟動框選</h3>
+    <p>三種啟動方式擇一：</p>
+    <ul>
+      <li>按下快捷鍵 <kbd>Alt</kbd> + <kbd>S</kbd>（預設）。</li>
+      <li>點擊頁面右下角浮動工具列的 <strong>📷 框選</strong>按鈕。</li>
+      <li>從 Popup 點擊 <strong>📷 開始框選翻譯</strong>大按鈕。</li>
+    </ul>
+    <p>啟動後，畫面會被半透明遮罩覆蓋，並出現十字游標。</p>
+
+    <h3>拉出一個矩形</h3>
+    <ul>
+      <li><strong>桌面：</strong>按住滑鼠左鍵，拖曳出涵蓋整段對話泡泡的矩形，放開後立即送出。</li>
+      <li><strong>手機：</strong>用手指按住拖曳。注意手機端不能截全頁，要確保框選的內容是<strong>頁面上實際可見的圖片元素</strong>。</li>
+      <li>不想框了？按 <kbd>Esc</kbd> 取消。</li>
+    </ul>
+
+    <h3>翻譯結果框，能做的比想像多</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>操作</th>
+            <th>桌面</th>
+            <th>手機</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>移動結果框位置</td><td>直接拖曳</td><td>手指拖曳</td></tr>
+          <tr><td>對照原文</td><td>長按結果框 0.4 秒，變透明</td><td>長按變透明</td></tr>
+          <tr><td>重新翻譯（換引擎或重試）</td><td>hover →「<strong>🔄 重翻</strong>」</td><td>輕點 →「<strong>🔄 重翻</strong>」</td></tr>
+          <tr><td>複製譯文到剪貼簿</td><td>hover →「<strong>📋 複製</strong>」</td><td>輕點 →「<strong>📋 複製</strong>」</td></tr>
+          <tr><td>關閉這一個</td><td>hover →「<strong>✕</strong>」</td><td>輕點 →「<strong>✕</strong>」</td></tr>
+          <tr><td>清除頁面上全部結果框</td><td colspan="2">浮動工具列「<strong>🗑 清除</strong>」</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>連續框選模式：一格接一格</h3>
+
+    <p>在工具列或 Popup 勾選「<strong>連續框選模式</strong>」。翻完一格之後，工具列按鈕會變成「▶ 繼續框選」——你只需要先把頁面捲到下一格，再點擊一下，就能立刻框選下一格，<strong>不需要重新按快捷鍵</strong>。</p>
+
+    <p>對於要連續看完一整話的讀者，這個模式可以省下一半的滑鼠移動。</p>
+
+    <h3>偏好設定</h3>
+    <p>Popup 底部還有三個小設定：</p>
+    <ul>
+      <li><strong>頁內快捷鍵</strong>：點擊輸入框後直接按下你要的組合鍵（例如 <kbd>Ctrl</kbd>+<kbd>Q</kbd>）。這個快捷鍵<strong>只在網頁內有效</strong>。Chrome 全域快捷鍵需到 <code>chrome://extensions/shortcuts</code> 設定。</li>
+      <li><strong>顯示網頁浮動工具列</strong>：右下角的小工具列。如果覺得擋畫面，可以關掉，純用快捷鍵。</li>
+      <li><strong>連續框選模式</strong>：上面說過了。</li>
+    </ul>
+
+    <div class="section-num" id="faq">第四章 · 常見問題</div>
+    <h2>使用前後常被問的事</h2>
+
+    <div class="faq">
+      <details open>
+        <summary>翻譯免費嗎？要不要付錢？</summary>
+        <div class="answer">
+          <p>MangaLens 本體完全免費，沒有訂閱也沒有買斷。但因為翻譯實際上是呼叫雲端模型，所以費用看你選哪個引擎：</p>
+          <ul>
+            <li><strong>Gemini</strong> 與 <strong>Groq</strong> 都有充足的免費額度，一般個人讀者幾乎不會超出。</li>
+            <li><strong>Cloud Vision</strong> 每月前 1,000 次免費，超過才開始計費（每千次約 1.5 美金）。</li>
+            <li><strong>OCR Space</strong> 完全免費，留白即可使用公用 Key。</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>我的 API Key 會被傳到哪裡？</summary>
+        <div class="answer">
+          <p>API Key 只存在你瀏覽器的 <code>chrome.storage.local</code>，<strong>不會傳到 MangaLens 開發者那裡</strong>——因為 MangaLens 沒有後端伺服器。</p>
+          <p>實際的 API 請求是直接從你的瀏覽器送到 Google、Groq 等服務商；它們會看到請求內容，這也是它們的隱私政策該負責的範圍。</p>
+        </div>
+      </details>
+      <details>
+        <summary>為什麼框選後一直顯示「未辨識到文字」？</summary>
+        <div class="answer">
+          <p>三個常見原因：</p>
+          <ol>
+            <li><strong>框得太小或太歪</strong>：把整段對話泡泡完整框進去，留一點邊距。</li>
+            <li><strong>是手寫字</strong>，但你選了傳統 OCR：改用 Gemini Vision 或 Groq Vision。</li>
+            <li><strong>是直排文字</strong>，但你用 OCR Space：OCR Space 不支援直排，改用 Gemini / Groq / Cloud Vision。</li>
+          </ol>
+        </div>
+      </details>
+      <details>
+        <summary>支援哪些網站？</summary>
+        <div class="answer">
+          <p>所有網站都支援，因為 MangaLens 用 <code>&lt;all_urls&gt;</code> 權限，並不針對特定漫畫平台。任何能在瀏覽器裡看到的圖片都能框選翻譯。</p>
+        </div>
+      </details>
+      <details>
+        <summary>手機版會不會比桌面慢？</summary>
+        <div class="answer">
+          <p>翻譯本身不會。但手機瀏覽器的截圖能力比較弱，所以框選時要確保<strong>截到的是頁面上實際可見的圖片元素</strong>，不是空白區域。如果手機端常失敗，建議改用桌面版。</p>
+        </div>
+      </details>
+      <details>
+        <summary>能換成翻譯成英文 / 日文嗎？</summary>
+        <div class="answer">
+          <p>目前的版本，<strong>翻譯輸出固定為繁體中文</strong>，這是因為 MangaLens 主要為繁中讀者設計。如果你想自己改，可以修改 <code>background.js</code> 裡的提示詞模板——這是開源專案，歡迎發 PR。</p>
+        </div>
+      </details>
+      <details>
+        <summary>更新擴充套件後，新功能沒生效？</summary>
+        <div class="answer">
+          <p>幾乎都是同一個原因：<strong>網頁忘記重新整理</strong>。Chrome 在你閱讀漫畫的時候已經把舊的 content script 注入頁面了，新的程式碼要等下一次載入頁面時才會生效。按 <kbd>F5</kbd> 重新整理一下就會回來。</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="section-num" id="troubleshoot">第五章 · 錯誤排除</div>
+    <h2>遇到紅字訊息時，照表操課</h2>
+
+    <p>結果框可能會顯示錯誤訊息而不是譯文。下表整理了所有看得到的錯誤訊息與解法。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 38%;">錯誤訊息</th>
+            <th>怎麼解</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>API Key 無效或已過期</strong></td>
+            <td>到對應的服務商網站重新檢查或申請一把新的 Key。注意是否完整貼上（沒漏字元）、是否誤用了到期的測試 Key。</td>
+          </tr>
+          <tr>
+            <td><strong>權限不足，需要啟用 API</strong></td>
+            <td>到 GCP Console，啟用對應的 API（例如 Cloud Vision API、Generative Language API）。GCP 的服務需要明確啟用才能呼叫。</td>
+          </tr>
+          <tr>
+            <td><strong>模型名稱錯誤或不存在</strong></td>
+            <td>檢查 Popup 裡的模型名稱拼寫。每個服務商的模型名稱會變動，請對照官方文件。</td>
+          </tr>
+          <tr>
+            <td><strong>請求過於頻繁</strong></td>
+            <td>等個 30 秒再試。如果常發生，代表你超過免費額度的速率限制，可換另一把 Key 或升級方案。</td>
+          </tr>
+          <tr>
+            <td><strong>截圖失敗</strong>（手機端）</td>
+            <td>手機瀏覽器截圖 API 較受限。確認你框選的是頁面上有可見的圖片元素，不是 CSS 背景或被 lazy-load 還沒載入的圖片。</td>
+          </tr>
+          <tr>
+            <td><strong>無法連線</strong></td>
+            <td>檢查網路。如果用 Local API Proxy，確認 Proxy URL 正確、服務有在跑、且不需要加 <code>/v1</code> 後綴。</td>
+          </tr>
+          <tr>
+            <td><strong>未辨識到文字</strong></td>
+            <td>框選區域可能沒有文字、或 OCR 引擎讀不出手寫字。改用 Gemini 或 Groq Vision，並確保把對話泡泡完整框入。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>如果上面沒有對應的訊息，到 GitHub 倉庫的 issue 區開一張，附上：用哪個引擎、錯誤訊息全文、瀏覽器版本。我們會盡快回覆。</p>
+
+    <p class="repo-link" data-od-id="author">
+      原始碼與回報問題 ——
+      <a href="https://github.com/cinminori/manga-lens" target="_blank" rel="noopener">github.com/cinminori/manga-lens</a>
+    </p>
+
+  </article>
+
+  <footer class="bottom">
+    <div class="left">MangaLens<span style="color: var(--accent);">.</span></div>
+    <div>
+      v2.0 · MIT License · Made with care in Taipei
+      &nbsp;·&nbsp;<a href="#">GitHub</a>
+    </div>
+  </footer>
+
+</body>
+</html>
