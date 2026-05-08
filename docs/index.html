@@ -144,55 +144,56 @@
     .byline .sep::before { content: "·"; margin: 0 4px; color: var(--border); }
 
     .hero {
-      aspect-ratio: 16 / 9;
-      border: 1px solid var(--border);
-      border-radius: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+      gap: 18px;
       margin-bottom: 14px;
-      overflow: hidden;
-      position: relative;
+      align-items: start;
+    }
+    .hero-shot {
+      margin: 0;
       background:
-        radial-gradient(60% 80% at 70% 20%, oklch(64% 0.13 28 / 0.18), transparent 60%),
-        radial-gradient(50% 70% at 20% 80%, oklch(64% 0.13 28 / 0.10), transparent 60%),
-        linear-gradient(135deg, oklch(99% 0.008 70), oklch(94% 0.02 70));
-    }
-    .hero .panel {
-      position: absolute;
-      background: var(--surface);
+        linear-gradient(180deg, oklch(64% 0.13 28 / 0.05), transparent 26%),
+        var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      box-shadow: 0 12px 36px -16px oklch(40% 0.04 50 / 0.18);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 38px -24px oklch(40% 0.04 50 / 0.22);
     }
-    .hero .panel.a { inset: 14% 52% 30% 10%; }
-    .hero .panel.b { inset: 18% 14% 50% 56%; }
-    .hero .panel.c { inset: 56% 18% 12% 22%; }
-    .hero .selection {
-      position: absolute;
-      inset: 32% 38% 28% 28%;
-      border: 1.5px dashed var(--accent);
-      background: oklch(64% 0.13 28 / 0.06);
-      border-radius: 4px;
+    .hero-shot.primary {
+      transform: rotate(-1.2deg);
     }
-    .hero .selection::after {
-      content: "";
-      position: absolute;
-      right: -5px; bottom: -5px;
-      width: 10px; height: 10px;
-      background: var(--accent);
-      border: 2px solid var(--surface);
-      border-radius: 50%;
+    .hero-shot.secondary {
+      transform: translateY(30px) rotate(1.4deg);
     }
-    .hero .bubble {
-      position: absolute;
-      left: 50%;
-      bottom: 14%;
-      transform: translateX(-50%);
-      background: var(--fg);
-      color: var(--bg);
-      font-size: 12px;
-      padding: 7px 14px;
+    .hero-shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: oklch(94% 0.014 70);
+    }
+    .hero-shot figcaption {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 12px;
+      align-items: center;
+      padding: 14px 16px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 9px;
       border-radius: 999px;
-      font-family: var(--font-body);
-      letter-spacing: 0.02em;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
     .caption {
       font-size: 13px;
@@ -526,6 +527,9 @@
       .masthead { flex-wrap: wrap; gap: 12px; padding: 22px 22px 18px; }
       .masthead nav { width: 100%; gap: 16px; }
       .wrap { padding: 40px 22px 64px; }
+      .hero { grid-template-columns: 1fr; gap: 14px; }
+      .hero-shot.primary,
+      .hero-shot.secondary { transform: none; }
       .quickstart { padding: 22px; grid-template-columns: 1fr; gap: 4px; }
       .quickstart .num { display: inline; }
       th, td { padding: 10px 12px; }
@@ -566,14 +570,23 @@
       <span>閱讀時間 約 8 分鐘</span>
     </div>
 
-    <div class="hero" data-od-id="hero" aria-hidden="true">
-      <div class="panel a"></div>
-      <div class="panel b"></div>
-      <div class="panel c"></div>
-      <div class="selection"></div>
-      <div class="bubble">框選即翻譯 · Alt+S</div>
+    <div class="hero" data-od-id="hero">
+      <figure class="hero-shot primary">
+        <img src="images/hero-before.png" alt="MangaLens 在漫畫頁面上顯示翻譯結果框，原文與繁體中文譯文同時可見" />
+        <figcaption>
+          <span class="hero-tag">Before</span>
+          <span>原文仍留在畫面上，譯文直接浮在旁邊，不需要切出閱讀頁面。</span>
+        </figcaption>
+      </figure>
+      <figure class="hero-shot secondary">
+        <img src="images/hero-after.png" alt="MangaLens 將翻譯結果整理成更乾淨的閱讀畫面，適合手機上直接閱讀" />
+        <figcaption>
+          <span class="hero-tag">After</span>
+          <span>翻譯完成後，閱讀視線依然留在同一頁，手機上也能維持乾淨的閱讀節奏。</span>
+        </figcaption>
+      </figure>
     </div>
-    <p class="caption">圖｜在韓漫頁面上拖曳一個矩形——OCR 與翻譯會自動接上。</p>
+    <p class="caption">圖｜左圖示範同頁顯示原文與譯文的即時效果；右圖是整理後更適合直接閱讀的成品畫面。</p>
 
     <p class="lede" data-od-id="lede">
       閱讀外文漫畫時，最累的不是看不懂，而是要在分頁、Google 翻譯、回到漫畫之間來回切換。MangaLens 把這條動線壓縮到一個動作：在頁面上拉一個框。
